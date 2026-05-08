@@ -1,0 +1,12 @@
+{
+  "name": "WILLIE",
+  "short_name": "WILLIE",
+  "description": "WILLIE Smart Dashboard",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "icons": []
+}
+
