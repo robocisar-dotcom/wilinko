@@ -8,14 +8,48 @@
     <link rel="manifest" href="manifest.webmanifest" />
   </head>
   <body style="margin:0;background:#050505;color:#fff;font-family:system-ui, -apple-system, Segoe UI, Arial, sans-serif;">
-    <!-- Ako na GitHube: koreň stránky len vkladá celú aplikáciu z app.html (výber PC/tablet/telefón je vnútri app). -->
+    <!-- Pri /repo bez koncového / by ./app.html v iframe smerovalo na /app.html (404 → „tma“). -->
     <iframe
       id="appFrame"
       title="WILLIE"
-      src="./app.html"
+      src="about:blank"
       style="position:fixed;inset:0;border:0;width:100%;height:100%;"
       allow="fullscreen"
     ></iframe>
-    <noscript>Zapni JavaScript.</noscript>
+    <script>
+      (function () {
+        function resolveAppEntryUrl() {
+          var u = new URL(window.location.href);
+          var path = u.pathname;
+          if (!path.endsWith("/")) {
+            if (/\.html$/i.test(path)) {
+              path = path.replace(/[^/]+$/, "");
+            }
+            if (!path.endsWith("/")) {
+              path = path + "/";
+            }
+          }
+          u.pathname = path;
+          u.search = "";
+          u.hash = "";
+          try {
+            return new URL("app.html", u.href).href;
+          } catch (e) {
+            return "app.html";
+          }
+        }
+        var f = document.getElementById("appFrame");
+        if (f) {
+          f.src = resolveAppEntryUrl();
+        }
+      })();
+    </script>
+    <noscript>
+      <p style="margin:0;padding:24px;text-align:center;">
+        Zapni JavaScript alebo
+        <a href="app.html" style="color:#93c5fd">otvor app.html</a>
+        priamo.
+      </p>
+    </noscript>
   </body>
 </html>
