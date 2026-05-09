@@ -3533,6 +3533,29 @@
             padding-bottom: max(120px, calc(env(safe-area-inset-bottom, 0px) + 48px));
         }
 
+        /* Telefón: Moja flóra — sync panel na celú šírku, väčší ťuk */
+        body.willi-device-phone #phone-expanded-body #flora-sync-ui {
+            max-width: none;
+            width: 100%;
+        }
+        body.willi-device-phone #phone-expanded-body #flora-sync-ui > div:first-child {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 10px;
+        }
+        body.willi-device-phone #phone-expanded-body #flora-sync-hint {
+            min-width: 0;
+        }
+        body.willi-device-phone #phone-expanded-body #flora-sync-sign-in,
+        body.willi-device-phone #phone-expanded-body #flora-sync-sign-out {
+            width: 100%;
+            min-height: 46px;
+            font-size: 11px;
+        }
+        body.willi-device-phone #phone-expanded-body #flora-sync-label {
+            max-width: none;
+        }
+
         /* Telefón: hlavné mobilné menu (logo + priečinky) */
         #phone-ui {
             display: none;
@@ -4269,7 +4292,15 @@
                     <i data-lucide="cloud" class="w-4 h-4 opacity-50 shrink-0"></i>
                     <span id="flora-sync-hint" class="opacity-50 font-semibold leading-snug flex-1 min-w-[140px]">Prihlás sa rovnakým Google účtom na telefóne aj PC — zoznam sa zosúladí.</span>
                     <span id="flora-sync-label" class="hidden font-bold text-[#7dd3fc] truncate max-w-[160px]"></span>
-                    <button type="button" id="flora-sync-sign-in" class="hidden px-3 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-cyan-200 font-black uppercase tracking-wider active:scale-[0.98]" onclick="syncSignInGoogle()">Google sync</button>
+                    <button type="button" id="flora-sync-sign-in" class="hidden inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/35 text-cyan-200 font-black uppercase tracking-wider active:scale-[0.98]" onclick="syncSignInGoogle()">
+                        <svg class="flora-sync-google-icon shrink-0" width="18" height="18" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        <span>Prihlásiť s Google</span>
+                    </button>
                     <button type="button" id="flora-sync-sign-out" class="hidden px-3 py-2 rounded-xl bg-white/5 border border-white/15 font-black uppercase tracking-wider opacity-80 active:scale-[0.98]" onclick="syncSignOutUser()">Odhlásiť</button>
                 </div>
                 <details id="flora-sync-details" class="hidden text-[9px] opacity-55 border-t border-white/6 pt-2">
@@ -4281,7 +4312,7 @@
                         <ol class="list-decimal pl-4 space-y-1">
                             <li>Na <strong>firebase.google.com</strong> vytvor projekt a v ňom zapni <strong>Prihlásenie → Google</strong> a databázu <strong>Firestore</strong>.</li>
                             <li>Skopíruj konfiguráciu webovej aplikácie a vlož ju buď do objektu <strong>firebaseConfig</strong> v kóde, alebo (jednoduchšie na GitHub Pages) ako súbor <strong>firebase-config.json</strong> vedľa <strong>app.html</strong> (pozri <strong>firebase-config.json.example</strong> v repozitári).</li>
-                            <li>Obnov stránku, potom tu klikni <strong>Google sync</strong> a použi rovnaký účet na všetkých zariadeniach.</li>
+                            <li>Obnov stránku, potom tu klikni <strong>Prihlásiť s Google</strong> a použi rovnaký účet na všetkých zariadeniach.</li>
                         </ol>
                         <p class="opacity-70 text-[8px] uppercase tracking-wide">Alternatíva pre pokročilých: konzola prehliadača → localStorage kľúč <strong>willi_firebase_config</strong> (JSON).</p>
                     </div>
@@ -9004,7 +9035,7 @@
 
         if (!isFirebaseConfigured() || typeof firebase === 'undefined') {
             hint.classList.remove('hidden');
-            hint.textContent = 'Zoznam rastlín je len v tomto zariadení. Pre synchronizáciu nahraj vedľa app.html súbor firebase-config.json (Firebase konfigurácia webovej appky) a obnov stránku — potom Google sync. Postup je v rozbalenom návode nižšie.';
+            hint.textContent = 'Zoznam rastlín je len v tomto zariadení. Pre synchronizáciu nahraj vedľa app.html súbor firebase-config.json (Firebase konfigurácia webovej appky) a obnov stránku — potom Prihlásiť s Google. Postup je v rozbalenom návode nižšie.';
             label.classList.add('hidden');
             btnIn.classList.add('hidden');
             btnOut.classList.add('hidden');
@@ -9088,6 +9119,9 @@
                 }
                 if (!user) return;
 
+                /* Po prihlásení odošli aktuálny lokálny stav (debounce v scheduleFirestorePush). */
+                scheduleFirestorePush();
+
                 const ref = db.collection('users').doc(user.uid).collection('willi').doc('plants');
                 firebasePlantsUnsub = ref.onSnapshot((doc) => {
                     if (!doc.exists) {
@@ -9100,6 +9134,11 @@
                     const d = doc.data();
                     const remote = d.plants;
                     if (!Array.isArray(remote)) return;
+                    /* Prázdny cloud + dáta len lokálne — nezmazať zariadenie; nahraj nahor. */
+                    if (remote.length === 0 && plants.length > 0) {
+                        scheduleFirestorePush();
+                        return;
+                    }
                     if (plantsSnapshotJson(plants) === plantsSnapshotJson(remote)) return;
                     applyRemotePlantsFromCloud(remote);
                 }, (err) => console.error('Firestore počúvanie', err));
