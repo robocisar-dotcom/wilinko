@@ -1,5 +1,5 @@
 /* WILLIE PWA service worker (minimal offline cache) */
-const CACHE = "willi-v10";
+const CACHE = "willi-v11";
 
 const CORE = [
   "./",
@@ -58,19 +58,10 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  /* firebase-config.json: vždy sieť — nikdy neservovať starý cache (zlý kľúč by ostal navždy). */
   const path = new URL(req.url).pathname;
   if (path.endsWith("/firebase-config.json")) {
-    event.respondWith(
-      fetch(req)
-        .then((res) => {
-          if (res.ok) {
-            const copy = res.clone();
-            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
-          }
-          return res;
-        })
-        .catch(() => caches.match(req))
-    );
+    event.respondWith(fetch(req));
     return;
   }
 
