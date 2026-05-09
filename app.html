@@ -3403,6 +3403,136 @@
         }
         body.willi-device-phone .home-widget--clock { display: none !important; }
 
+        /* Telefón: ďalšie sekcie ako dlaždice (accordion skrytý). */
+        .phone-hub-tiles {
+            display: none;
+        }
+        body.willi-device-phone .phone-hub-tiles {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 14px;
+            width: 100%;
+            max-width: 100%;
+            text-align: left;
+            box-sizing: border-box;
+        }
+        .phone-hub-tile {
+            appearance: none;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 18px;
+            padding: 14px 12px;
+            color: inherit;
+            font: inherit;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-height: 56px;
+            text-align: left;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .phone-hub-tile:active {
+            transform: scale(0.99);
+        }
+        .phone-hub-tile-ico {
+            width: 40px;
+            height: 40px;
+            border-radius: 14px;
+            background: rgba(116, 184, 22, 0.14);
+            border: 1px solid rgba(116, 184, 22, 0.22);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .phone-hub-tile-ico--sky {
+            background: rgba(51, 154, 240, 0.14);
+            border-color: rgba(51, 154, 240, 0.25);
+        }
+        .phone-hub-tile-ico--violet {
+            background: rgba(167, 139, 250, 0.14);
+            border-color: rgba(167, 139, 250, 0.25);
+        }
+        .phone-hub-tile-ico--rose {
+            background: rgba(244, 63, 94, 0.12);
+            border-color: rgba(244, 63, 94, 0.22);
+        }
+        .phone-hub-tile-lbl {
+            font-weight: 900;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            font-size: 11px;
+            opacity: 0.92;
+            line-height: 1.25;
+        }
+
+        body.willi-device-phone #phone-folders {
+            display: none !important;
+        }
+
+        .phone-expanded {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 200;
+            flex-direction: column;
+            background: var(--bg-black);
+            box-sizing: border-box;
+        }
+        body.willi-device-phone.willi-phone-expanded .phone-expanded {
+            display: flex;
+        }
+        .phone-expanded-top {
+            flex: 0 0 auto;
+            display: flex;
+            align-items: center;
+            padding: max(10px, env(safe-area-inset-top, 0px)) max(var(--willi-page-side), env(safe-area-inset-right, 0px)) 10px max(var(--willi-page-side), env(safe-area-inset-left, 0px));
+            background: linear-gradient(180deg, rgba(5, 5, 5, 0.97) 0%, rgba(5, 5, 5, 0.88) 100%);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .phone-expanded-home {
+            appearance: none;
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            border-radius: 14px;
+            padding: 10px 16px;
+            font-weight: 800;
+            font-size: 14px;
+            letter-spacing: 0.02em;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .phone-expanded-home i,
+        .phone-expanded-home svg {
+            width: 20px;
+            height: 20px;
+        }
+        .phone-expanded-body {
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow-x: hidden;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            overscroll-behavior-y: contain;
+        }
+        body.willi-device-phone #phone-expanded-body .view-section.active {
+            display: block !important;
+            height: auto !important;
+            min-height: 0 !important;
+            max-height: none !important;
+            overflow: visible !important;
+            padding-left: max(var(--willi-page-side), env(safe-area-inset-left, 0px));
+            padding-right: max(var(--willi-page-side), env(safe-area-inset-right, 0px));
+            padding-bottom: max(120px, calc(env(safe-area-inset-bottom, 0px) + 48px));
+        }
+
         /* Telefón: hlavné mobilné menu (logo + priečinky) */
         #phone-ui {
             display: none;
@@ -3653,6 +3783,47 @@
         let phoneMounted = false;
         let phoneHomeRestore = null;
         const phoneRestore = {};
+        const WILLI_PHONE_SECTION_IDS = ['flora', 'weather', 'multimedia', 'notes', 'googlehome'];
+
+        window.williPhoneCollapseExpandedToHome = function () {
+            if (!document.body.classList.contains('willi-device-phone')) return;
+            const host = document.getElementById('phone-expanded-body');
+            if (!host) return;
+            Array.from(host.children).forEach(function (el) {
+                const pid = el.getAttribute('data-willi-phone-panel');
+                if (pid) {
+                    const p = document.getElementById(pid);
+                    if (p) p.appendChild(el);
+                }
+            });
+            document.body.classList.remove('willi-phone-expanded');
+            const pe = document.getElementById('phone-expanded');
+            if (pe) pe.setAttribute('aria-hidden', 'true');
+        };
+
+        window.williPhoneExpandSection = function (viewId) {
+            if (!document.body.classList.contains('willi-device-phone')) return;
+            const vid = String(viewId || '');
+            if (!WILLI_PHONE_SECTION_IDS.includes(vid)) return;
+            const host = document.getElementById('phone-expanded-body');
+            const v = document.getElementById('view-' + vid);
+            if (!host || !v) return;
+            Array.from(host.children).forEach(function (el) {
+                const pid = el.getAttribute('data-willi-phone-panel');
+                if (pid) {
+                    const p = document.getElementById(pid);
+                    if (p) p.appendChild(el);
+                }
+            });
+            if (!v.getAttribute('data-willi-phone-panel')) {
+                v.setAttribute('data-willi-phone-panel', 'phone-panel-' + vid);
+            }
+            host.appendChild(v);
+            host.scrollTop = 0;
+            document.body.classList.add('willi-phone-expanded');
+            const pe = document.getElementById('phone-expanded');
+            if (pe) pe.setAttribute('aria-hidden', 'false');
+        };
 
         function getParam(name) {
             try {
@@ -3732,7 +3903,7 @@
                         const v = document.getElementById('view-' + id);
                         if (v && v.classList.contains('active')) active = id;
                     });
-                    window.williPhoneOpenFolder(active);
+                    if (typeof window.williPhoneExpandSection === 'function') window.williPhoneExpandSection(active);
                 }
             } catch (e) {}
             try { if (window.lucide && typeof window.lucide.createIcons === 'function') window.lucide.createIcons(); } catch (e) {}
@@ -3740,6 +3911,9 @@
 
         function unmountPhoneFolders() {
             if (!phoneMounted) return;
+            try {
+                if (typeof window.williPhoneCollapseExpandedToHome === 'function') window.williPhoneCollapseExpandedToHome();
+            } catch (e0) {}
             if (phoneHomeRestore) {
                 const vh = document.getElementById('view-home');
                 if (vh && phoneHomeRestore.parent) {
@@ -3866,9 +4040,6 @@
         <div class="phone-logo">
             <div class="phone-logo-mark">WILLIE<span class="dot">.</span></div>
             <div class="phone-topbar-actions">
-                <button type="button" class="phone-topbar-btn" aria-label="Domov — dlaždice" title="Domov" onclick="switchView('home')">
-                    <i data-lucide="layout-grid"></i>
-                </button>
                 <button type="button" class="phone-topbar-btn" aria-label="Pozadie" onclick="openBgPicker()" title="Pozadie">
                     <i data-lucide="palette"></i>
                 </button>
@@ -3937,6 +4108,16 @@
             </button>
             <div class="phone-folder-panel" id="phone-panel-googlehome"></div>
         </div>
+    </div>
+    <!-- Telefón: po kliku na dlaždicu — celá obrazovka sekcie; jediné tlačidlo Domov. -->
+    <div id="phone-expanded" class="phone-expanded" aria-hidden="true">
+        <div class="phone-expanded-top">
+            <button type="button" class="phone-expanded-home" onclick="switchView('home')" aria-label="Domov — späť na dlaždice">
+                <i data-lucide="arrow-left"></i>
+                <span>Domov</span>
+            </button>
+        </div>
+        <div id="phone-expanded-body" class="phone-expanded-body"></div>
     </div>
 </div>
 
@@ -4050,6 +4231,21 @@
                 </div>
             </div>
             <button type="button" class="home-widget-resize" aria-label="Diagonalná zmena veľkosti dlaždice" title="Ťahaj vpravo dole — veľkosť dlaždice"></button>
+        </div>
+
+        <div class="phone-hub-tiles" aria-label="Ďalšie sekcie (telefón)">
+            <button type="button" class="phone-hub-tile" onclick="switchView('flora')">
+                <span class="phone-hub-tile-ico"><i data-lucide="leaf"></i></span>
+                <span class="phone-hub-tile-lbl">Moja flóra</span>
+            </button>
+            <button type="button" class="phone-hub-tile" onclick="switchView('multimedia')">
+                <span class="phone-hub-tile-ico phone-hub-tile-ico--violet"><i data-lucide="play"></i></span>
+                <span class="phone-hub-tile-lbl">Multimédiá</span>
+            </button>
+            <button type="button" class="phone-hub-tile" onclick="switchView('googlehome')">
+                <span class="phone-hub-tile-ico phone-hub-tile-ico--sky"><i data-lucide="house"></i></span>
+                <span class="phone-hub-tile-lbl">Google Home</span>
+            </button>
         </div>
     </div>
 </div>
@@ -7967,9 +8163,10 @@
         if (document.body.classList.contains('willi-device-phone')) {
             try {
                 if (viewId === 'home') {
+                    if (typeof window.williPhoneCollapseExpandedToHome === 'function') window.williPhoneCollapseExpandedToHome();
                     if (typeof window.williPhoneCloseSectionFolders === 'function') window.williPhoneCloseSectionFolders();
                 } else if (['flora', 'weather', 'multimedia', 'notes', 'googlehome'].includes(viewId)) {
-                    if (typeof window.williPhoneOpenFolder === 'function') window.williPhoneOpenFolder(viewId, true);
+                    if (typeof window.williPhoneExpandSection === 'function') window.williPhoneExpandSection(viewId);
                 }
             } catch (ePh) {}
         }
