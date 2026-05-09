@@ -4924,6 +4924,14 @@
     });
 
     /** Hodnoty zo súboru; localStorage doplní len chýbajúce polia (neprepíše platný apiKey zo súboru). */
+    function firebaseConfigJsonLooksValid(j) {
+        if (!j || typeof j !== 'object') return false;
+        const k = j.apiKey;
+        if (typeof k !== 'string' || k.length < 30 || !/^AIza[0-9A-Za-z\-_]+$/.test(k.trim())) return false;
+        if (typeof j.projectId !== 'string' || !j.projectId.trim()) return false;
+        if (typeof j.appId !== 'string' || !j.appId.trim()) return false;
+        return true;
+    }
     function applyFirebaseConfigFromObject(j) {
         const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
         for (let i = 0; i < keys.length; i++) {
@@ -9149,7 +9157,16 @@
             else await auth.signInWithPopup(provider);
         } catch (e) {
             console.error(e);
-            alert('Prihlásenie zlyhalo: ' + (e && e.message ? e.message : e));
+            const msg = e && e.message ? String(e.message) : String(e);
+            const code = e && e.code ? String(e.code) : '';
+            let hint = '';
+            if (code === 'auth/api-key-not-valid' || /api-key-not-valid/i.test(msg)) {
+                hint =
+                    '\n\n— V Firebase Console → Project settings skontroluj, či apiKey v súbore sedí s webovou aplikáciou.\n' +
+                    '— V Google Cloud Console → APIs & Services → Credentials → tvoj kľúč: dočasne „Application restrictions: None“ a „API restrictions: Don\'t restrict“ (test). Ak to začne fungovať, pridaj späť obmedzenia a povol aspoň „Identity Toolkit API“.\n' +
+                    '— Pri „HTTP referrers“ musí byť tvoja presná stránka (napr. https://tvoj.github.io a https://tvoj.github.io/wilinko/*).';
+            }
+            alert('Prihlásenie zlyhalo: ' + msg + hint);
         }
     }
 
@@ -9779,7 +9796,17 @@
                         console.warn('firebase-config.json: server vracia HTML namiesto JSON (často 404 stránka). Skontroluj cestu k súboru a nasadenie.');
                     }
                     const j = await r.json();
-                    if (j && typeof j === 'object') applyFirebaseConfigFromObject(j);
+                    if (firebaseConfigJsonLooksValid(j)) {
+                        applyFirebaseConfigFromObject(j);
+                        try {
+                            const pre = String(firebaseConfig.apiKey || '').slice(0, 8);
+                            console.info('[Willi Firebase] Načítaný firebase-config.json · projectId=' + firebaseConfig.projectId + ' · apiKey začína ' + pre + '…');
+                        } catch (eL) {}
+                    } else {
+                        console.warn(
+                            '[Willi Firebase] firebase-config.json nie je platný Firebase web config (apiKey / projectId / appId). Otvor v prehliadači priamo URL súboru a skontroluj JSON.'
+                        );
+                    }
                 } else {
                     console.warn('firebase-config.json nie je dostupný (HTTP ' + r.status + '). Skontroluj, či je v tom istom priečinku ako app.html.');
                 }
