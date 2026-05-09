@@ -4950,7 +4950,9 @@
         }
     }
 
-    tryInitFirebase();
+    /* Neinicializovať hneď: merge z localStorage by mohol spustiť initializeApp so zlým apiKey
+     * skôr než sa stihne načítať firebase-config.json — potom by ostala neplatná konfigurácia.
+     * Prvé volanie tryInitFirebase je v onload po fetchi súboru (alebo hneď, ak súbor chýba). */
 
     let firebasePlantsUnsub = null;
     let firebasePushTimer = null;
@@ -9711,13 +9713,13 @@
                 if (r.ok) {
                     const j = await r.json();
                     if (j && typeof j === 'object') Object.assign(firebaseConfig, j);
-                    tryInitFirebase();
                 } else {
                     console.warn('firebase-config.json nie je dostupný (HTTP ' + r.status + '). Skontroluj, či je v tom istom priečinku ako app.html.');
                 }
             } catch (e) {
                 console.warn('firebase-config.json fetch', e);
             }
+            tryInitFirebase();
             initFirebaseSync();
         })();
         // PWA: service worker (vyžaduje HTTPS alebo localhost)
