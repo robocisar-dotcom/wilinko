@@ -4280,7 +4280,7 @@
                         <p>Teraz sa rastliny ukladajú iba do tohto prehliadača. Na zdieľanie medzi zariadeniami treba jednorazovo zapnúť bezplatnú službu Firebase (účet Google).</p>
                         <ol class="list-decimal pl-4 space-y-1">
                             <li>Na <strong>firebase.google.com</strong> vytvor projekt a v ňom zapni <strong>Prihlásenie → Google</strong> a databázu <strong>Firestore</strong>.</li>
-                            <li>Skopíruj konfiguráciu webovej aplikácie a vlož ju do súboru Willi do objektu <strong>firebaseConfig</strong> (návod je v komentári nad ním v kóde).</li>
+                            <li>Skopíruj konfiguráciu webovej aplikácie a vlož ju buď do objektu <strong>firebaseConfig</strong> v kóde, alebo (jednoduchšie na GitHub Pages) ako súbor <strong>firebase-config.json</strong> vedľa <strong>app.html</strong> (pozri <strong>firebase-config.json.example</strong> v repozitári).</li>
                             <li>Obnov stránku, potom tu klikni <strong>Google sync</strong> a použi rovnaký účet na všetkých zariadeniach.</li>
                         </ol>
                         <p class="opacity-70 text-[8px] uppercase tracking-wide">Alternatíva pre pokročilých: konzola prehliadača → localStorage kľúč <strong>willi_firebase_config</strong> (JSON).</p>
@@ -4895,17 +4895,31 @@
         } catch (e) { console.warn('willi_firebase_config', e); }
     })();
 
-    const firebaseCanInit = typeof firebase !== 'undefined'
-        && !!(firebaseConfig.apiKey && firebaseConfig.authDomain && firebaseConfig.projectId && firebaseConfig.appId);
     let db = null;
-    if (firebaseCanInit) {
+
+    /** Skúsi inicializovať Firebase (po doplnení kľúčov z kódu, localStorage alebo firebase-config.json). */
+    function tryInitFirebase() {
+        if (typeof firebase === 'undefined') return false;
+        if (firebase.apps && firebase.apps.length) {
+            try {
+                db = firebase.firestore();
+                return true;
+            } catch (e) {
+                return false;
+            }
+        }
+        if (!isFirebaseConfigured()) return false;
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.firestore();
+            return true;
         } catch (e) {
-            console.error('Firebase inicializácia (skontroluj firebaseConfig)', e);
+            console.error('Firebase inicializácia (firebaseConfig / firebase-config.json)', e);
+            return false;
         }
     }
+
+    tryInitFirebase();
 
     let firebasePlantsUnsub = null;
     let firebasePushTimer = null;
@@ -8990,7 +9004,7 @@
 
         if (!isFirebaseConfigured() || typeof firebase === 'undefined') {
             hint.classList.remove('hidden');
-            hint.textContent = 'Zoznam rastlín je len v tomto zariadení. Cloud na zdieľanie s PC/telefónom je voliteľný — postup nižšie.';
+            hint.textContent = 'Zoznam rastlín je len v tomto zariadení. Pre synchronizáciu nahraj vedľa app.html súbor firebase-config.json (Firebase konfigurácia webovej appky) a obnov stránku — potom Google sync. Postup je v rozbalenom návode nižšie.';
             label.classList.add('hidden');
             btnIn.classList.add('hidden');
             btnOut.classList.add('hidden');
@@ -9019,6 +9033,14 @@
         lucide.createIcons();
     }
 
+    function williAuthInIframe() {
+        try {
+            return window.self !== window.top;
+        } catch (e) {
+            return true;
+        }
+    }
+
     async function syncSignInGoogle() {
         if (!isFirebaseConfigured() || typeof firebase === 'undefined') return;
         try {
@@ -9026,7 +9048,8 @@
             const auth = firebase.auth();
             const provider = new firebase.auth.GoogleAuthProvider();
             const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent || '');
-            if (mobile) await auth.signInWithRedirect(provider);
+            /* Popup v iframe (GitHub Pages: index → app.html) často zlyhá alebo ho prehliadač zablokuje. */
+            if (mobile || williAuthInIframe()) await auth.signInWithRedirect(provider);
             else await auth.signInWithPopup(provider);
         } catch (e) {
             console.error(e);
@@ -9051,7 +9074,11 @@
             const auth = firebase.auth();
             db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
 
-            auth.getRedirectResult().catch(() => {});
+            auth.getRedirectResult().then(function (result) {
+                if (result && result.user) updateSyncUi(result.user);
+            }).catch(function (e) {
+                if (e && e.code && e.code !== 'auth/popup-closed-by-user') console.warn('Firebase redirect', e);
+            });
 
             auth.onAuthStateChanged((user) => {
                 updateSyncUi(user);
@@ -9638,7 +9665,22 @@
         refreshHomeNotesPreview();
         void updateLiveAgendaFromSheet();
         saveAndRender();
-        initFirebaseSync();
+        void (async () => {
+            try {
+                const url = new URL('firebase-config.json', window.location.href);
+                const r = await fetch(url.href, { cache: 'no-store' });
+                if (r.ok) {
+                    const j = await r.json();
+                    if (j && typeof j === 'object') Object.assign(firebaseConfig, j);
+                    tryInitFirebase();
+                } else {
+                    console.warn('firebase-config.json nie je dostupný (HTTP ' + r.status + '). Skontroluj, či je v tom istom priečinku ako app.html.');
+                }
+            } catch (e) {
+                console.warn('firebase-config.json fetch', e);
+            }
+            initFirebaseSync();
+        })();
         // PWA: service worker (vyžaduje HTTPS alebo localhost)
         try {
             if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
