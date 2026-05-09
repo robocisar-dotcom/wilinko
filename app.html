@@ -4917,16 +4917,79 @@
         messagingSenderId: '',
         appId: ''
     };
-    (function mergeFirebaseConfigFromStorage() {
+
+    let firebaseBootstrapResolve = function () {};
+    const firebaseBootstrapPromise = new Promise(function (resolve) {
+        firebaseBootstrapResolve = resolve;
+    });
+
+    /** Hodnoty zo súboru; localStorage doplní len chýbajúce polia (neprepíše platný apiKey zo súboru). */
+    function applyFirebaseConfigFromObject(j) {
+        const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+        for (let i = 0; i < keys.length; i++) {
+            const k = keys[i];
+            const v = j[k];
+            if (v == null || v === '') continue;
+            firebaseConfig[k] = typeof v === 'string' ? v.trim() : String(v);
+        }
+    }
+    function mergeFirebaseConfigFallbackFromStorage() {
         try {
             const raw = localStorage.getItem('willi_firebase_config');
             if (!raw) return;
             const o = JSON.parse(raw);
-            if (o && typeof o === 'object') Object.assign(firebaseConfig, o);
-        } catch (e) { console.warn('willi_firebase_config', e); }
-    })();
+            if (!o || typeof o !== 'object') return;
+            const keys = ['apiKey', 'authDomain', 'projectId', 'storageBucket', 'messagingSenderId', 'appId'];
+            for (let i = 0; i < keys.length; i++) {
+                const k = keys[i];
+                if (firebaseConfig[k]) continue;
+                const v = o[k];
+                if (v == null || v === '') continue;
+                firebaseConfig[k] = typeof v === 'string' ? v.trim() : String(v);
+            }
+        } catch (e) {
+            console.warn('willi_firebase_config', e);
+        }
+    }
 
     let db = null;
+
+    /** Ak už beží Firebase s iným apiKey/projectId ako aktuálny firebaseConfig, zruší appku (napr. starý SW / cache). */
+    async function ensureFirebaseAppMatchesLoadedConfig() {
+        if (typeof firebase === 'undefined' || !firebase.apps || !firebase.apps.length) return;
+        let app;
+        try {
+            app = firebase.app();
+        } catch (e) {
+            return;
+        }
+        let o;
+        try {
+            o = app.options;
+        } catch (e2) {
+            return;
+        }
+        if (
+            String(o.apiKey || '') === String(firebaseConfig.apiKey || '') &&
+            String(o.projectId || '') === String(firebaseConfig.projectId || '')
+        ) {
+            return;
+        }
+        try {
+            try {
+                await firebase.auth().signOut();
+            } catch (eSo) {}
+            if (firebasePlantsUnsub) {
+                firebasePlantsUnsub();
+                firebasePlantsUnsub = null;
+            }
+            await app.delete();
+        } catch (eDel) {
+            console.warn('Firebase: reset aplikácie zlyhal', eDel);
+        }
+        db = null;
+        initFirebaseSync._attached = false;
+    }
 
     /** Skúsi inicializovať Firebase (po doplnení kľúčov z kódu, localStorage alebo firebase-config.json). */
     function tryInitFirebase() {
@@ -4950,9 +5013,8 @@
         }
     }
 
-    /* Neinicializovať hneď: merge z localStorage by mohol spustiť initializeApp so zlým apiKey
-     * skôr než sa stihne načítať firebase-config.json — potom by ostala neplatná konfigurácia.
-     * Prvé volanie tryInitFirebase je v onload po fetchi súboru (alebo hneď, ak súbor chýba). */
+    /* Prvé tryInitFirebase až po načítaní firebase-config.json; localStorage doplní len prázdne polia.
+     * Prihlásenie čaká na firebaseBootstrapPromise, aby nešlo o apiKey pred dokončením fetchu. */
 
     let firebasePlantsUnsub = null;
     let firebasePushTimer = null;
@@ -9075,6 +9137,7 @@
     }
 
     async function syncSignInGoogle() {
+        await firebaseBootstrapPromise;
         if (!isFirebaseConfigured() || typeof firebase === 'undefined') return;
         try {
             initFirebaseSync();
@@ -9711,16 +9774,32 @@
                 const url = new URL('firebase-config.json', window.location.href);
                 const r = await fetch(url.href, { cache: 'no-store' });
                 if (r.ok) {
+                    const ct = (r.headers.get('content-type') || '').toLowerCase();
+                    if (ct.includes('text/html')) {
+                        console.warn('firebase-config.json: server vracia HTML namiesto JSON (často 404 stránka). Skontroluj cestu k súboru a nasadenie.');
+                    }
                     const j = await r.json();
-                    if (j && typeof j === 'object') Object.assign(firebaseConfig, j);
+                    if (j && typeof j === 'object') applyFirebaseConfigFromObject(j);
                 } else {
                     console.warn('firebase-config.json nie je dostupný (HTTP ' + r.status + '). Skontroluj, či je v tom istom priečinku ako app.html.');
                 }
             } catch (e) {
                 console.warn('firebase-config.json fetch', e);
             }
-            tryInitFirebase();
-            initFirebaseSync();
+            mergeFirebaseConfigFallbackFromStorage();
+            try {
+                await ensureFirebaseAppMatchesLoadedConfig();
+            } catch (eR) {
+                console.warn('Firebase config sync', eR);
+            }
+            try {
+                tryInitFirebase();
+                initFirebaseSync();
+            } finally {
+                try {
+                    firebaseBootstrapResolve();
+                } catch (eB) {}
+            }
         })();
         // PWA: service worker (vyžaduje HTTPS alebo localhost)
         try {
