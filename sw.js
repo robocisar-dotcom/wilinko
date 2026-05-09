@@ -1,5 +1,5 @@
 /* WILLIE PWA service worker (minimal offline cache) */
-const CACHE = "willi-v1";
+const CACHE = "willi-v10";
 
 const CORE = [
   "./",
@@ -58,6 +58,22 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  const path = new URL(req.url).pathname;
+  if (path.endsWith("/firebase-config.json")) {
+    event.respondWith(
+      fetch(req)
+        .then((res) => {
+          if (res.ok) {
+            const copy = res.clone();
+            caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
   // Cache-first for same-origin static assets; network fallback.
   const url = new URL(req.url);
   if (url.origin === self.location.origin) {
@@ -73,4 +89,3 @@ self.addEventListener("fetch", (event) => {
     );
   }
 });
-
